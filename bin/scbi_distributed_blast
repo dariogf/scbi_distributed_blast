@@ -1,0 +1,137 @@
+#!/usr/bin/env ruby
+
+$: << File.join(File.dirname(File.dirname(__FILE__)),'lib')
+
+# load required libraries
+require 'scbi_mapreduce'
+require 'scbi_distributed_blast'
+
+require 'optparse'
+
+options = {}
+
+optparse = OptionParser.new do |opts|
+
+  # Set a banner, displayed at the top
+  # of the help screen.
+  opts.banner = "Usage: #{$0} [options] blast_command"
+
+  # Define the options, and what they do
+  
+  options[:server_ip] = '0.0.0.0'
+  opts.on( '-s', '--server IP', 'Server ip. You can use a partial ip to select the apropriate interface' ) do |server_ip|
+    options[:server_ip] = server_ip
+  end
+
+  options[:port] = 0 # any free port
+  opts.on( '-p', '--port PORT', 'Server port. If set to 0, an arbitrary empty port will be used') do |port|
+    options[:port] = port.to_i
+  end
+
+  # set number of workers. You can also provide an array with worker names.
+  # Those workers names can be read from a file produced by the existing
+  # queue system, if any.
+  options[:workers] = 2
+  opts.on( '-w', '--workers COUNT', 'Number of workers, or file containing machine names to launch workers with ssh' ) do |workers|
+    if File.exists?(workers)
+      # use workers file
+      options[:workers] = File.read(workers).split("\n").map{|w| w.chomp}
+    else
+      begin
+        options[:workers] = Integer(workers)
+      rescue
+        STDERR.puts "ERROR:Invalid workers parameter #{options[:workers]}"
+        exit
+      end
+    end
+  end
+
+  options[:chunk_size] = 100
+  opts.on( '-g', '--group_size chunk_size', 'Group sequences in chunks of size <chunk_size>' ) do |cs|
+    options[:chunk_size] = cs.to_i
+  end
+
+  # This displays the help screen, all programs are
+  # assumed to have this option.
+  opts.on_tail( '-h', '--help', 'Display this screen' ) do
+    puts opts
+    # show_additional_help
+    exit -1
+  end
+end
+
+# parse options and remove from ARGV
+optparse.parse!
+
+blast_cmd = ARGV.join(' ')
+
+puts "Original Blast+ CMD: #{blast_cmd}"
+
+input_file = nil
+output_file = nil
+
+if blast_cmd.upcase.index('-QUERY')
+  params=blast_cmd.split(' -')
+  params.reverse_each do |param|
+    if param.upcase.index('QUERY ')==0
+      puts "found .#{param.strip}."
+      
+      input_file=param.slice(5,param.length).strip
+      input_file=File.expand_path(input_file)
+      params.delete(param)
+      # break
+    end
+
+    if param.upcase.index('OUT ')==0
+      puts "found .#{param.strip}."
+      
+      output_file=param.slice(3,param.length).strip
+      output_file=File.expand_path(output_file)
+      params.delete(param)
+      # break
+    end
+      
+      
+  end
+  
+  blast_cmd=params.join(' -')
+end
+
+puts "BLASTCMD: #{blast_cmd}"
+puts "Input file: #{input_file}"
+puts "Output file: #{output_file}"
+
+if !input_file.nil? and File.exists?(File.expand_path(input_file))
+  puts "Query input file: #{input_file}"
+else
+  puts "No input file specified in blast command (-query parameter)"
+  exit -1
+end
+
+# we need the path to my_worker in order to launch it when necessary
+# custom_worker_file = File.join(File.dirname(__FILE__),'scbi_dblast_worker.rb')
+custom_worker_file=File.join(File.dirname(File.dirname(__FILE__)),'lib','scbi_distributed_blast','scbi_dblast_worker')
+
+# initialize the work manager. Here you can pass parameters like file names
+ScbiDblastManager.init_work_manager(input_file, blast_cmd, output_file)
+
+# launch processor server
+mgr = ScbiMapreduce::Manager.new(options[:server_ip], options[:port], options[:workers], ScbiDblastManager, custom_worker_file, STDOUT)
+
+# you can set additional properties
+# =================================
+
+# if you want basic checkpointing. Some performance drop should be expected
+# mgr.checkpointing=true
+
+# if you want to keep the order of input data. Some performance drop should be expected
+# mgr.keep_order=true
+
+# you can set the size of packets of data sent to workers
+mgr.chunk_size=options[:chunk_size]
+
+# start processing
+mgr.start_server
+
+# this line is reached when all data has been processed
+puts "Program finished"
