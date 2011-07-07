@@ -1,9 +1,12 @@
+bin/scbi_distributed_blast
 History.txt
+lib/scbi_distributed_blast/scbi_dblast_manager.rb
+lib/scbi_distributed_blast/scbi_dblast_worker.rb
+lib/scbi_distributed_blast.rb
 Manifest.txt
 PostInstall.txt
-README.rdoc
 Rakefile
-lib/scbi_distributed_blast.rb
+README.rdoc
 script/console
 script/destroy
 script/generate

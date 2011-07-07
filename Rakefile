@@ -14,8 +14,8 @@ $hoe = Hoe.spec 'scbi_distributed_blast' do
   self.developer 'Dario Guerrero', 'dariogf@gmail.com'
   self.post_install_message = 'PostInstall.txt' # TODO remove if post-install message not required
   self.rubyforge_name       = self.name # TODO this is default value
-  self.extra_deps           = [['scbi_mapreduce','>= 0.0.33'], ['scbi_blast','>= 0.0.32']]
-
+  self.extra_deps           = [['scbi_mapreduce','>= 0.0.33'], ['scbi_blast','>= 0.0.32'],['scbi_fasta','>= 0.1.7']]
+  
 end
 
 require 'newgem/tasks'

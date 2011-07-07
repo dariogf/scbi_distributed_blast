@@ -5,8 +5,17 @@ $: << File.join(File.dirname(File.dirname(__FILE__)),'lib')
 # load required libraries
 require 'scbi_mapreduce'
 require 'scbi_distributed_blast'
-
+require 'logger'
 require 'optparse'
+
+if ENV['SCBI_DISTRIBUTED_BLAST_INIT'] && File.exists?(ENV['SCBI_DISTRIBUTED_BLAST_INIT'])
+  $INIT_FILE=File.expand_path(ENV['SCBI_DISTRIBUTED_BLAST_INIT'])
+elsif File.exists?(File.join('~','scbi_distributed_blast_init_env'))
+  $INIT_FILE=File.join('~','scbi_distributed_blast_init_env')
+else
+  $INIT_FILE=File.join(ROOT_PATH,'scbi_distributed_blast_init_env')
+end
+
 
 options = {}
 
@@ -50,6 +59,12 @@ optparse = OptionParser.new do |opts|
   opts.on( '-g', '--group_size chunk_size', 'Group sequences in chunks of size <chunk_size>' ) do |cs|
     options[:chunk_size] = cs.to_i
   end
+  
+  options[:log_file] = STDOUT
+  opts.on( '-l', '--log_file file', 'Define a log file. STDOUT by default' ) do |cs|
+    options[:log_file] = cs
+  end
+  
 
   # This displays the help screen, all programs are
   # assumed to have this option.
@@ -65,7 +80,11 @@ optparse.parse!
 
 blast_cmd = ARGV.join(' ')
 
-puts "Original Blast+ CMD: #{blast_cmd}"
+$LOG = Logger.new(options[:log_file])
+$LOG.datetime_format = "%Y-%m-%d %H:%M:%S"
+
+
+$LOG.info "Original Blast+ CMD: #{blast_cmd}"
 
 input_file = nil
 output_file = nil
@@ -74,7 +93,7 @@ if blast_cmd.upcase.index('-QUERY')
   params=blast_cmd.split(' -')
   params.reverse_each do |param|
     if param.upcase.index('QUERY ')==0
-      puts "found .#{param.strip}."
+      $LOG.debug "found .#{param.strip}."
       
       input_file=param.slice(5,param.length).strip
       input_file=File.expand_path(input_file)
@@ -83,7 +102,7 @@ if blast_cmd.upcase.index('-QUERY')
     end
 
     if param.upcase.index('OUT ')==0
-      puts "found .#{param.strip}."
+      $LOG.debug "found .#{param.strip}."
       
       output_file=param.slice(3,param.length).strip
       output_file=File.expand_path(output_file)
@@ -97,14 +116,15 @@ if blast_cmd.upcase.index('-QUERY')
   blast_cmd=params.join(' -')
 end
 
-puts "BLASTCMD: #{blast_cmd}"
-puts "Input file: #{input_file}"
-puts "Output file: #{output_file}"
+# puts "BLASTCMD: #{blast_cmd}"
+# puts "Input file: #{input_file}"
+# puts "Output file: #{output_file}"
 
 if !input_file.nil? and File.exists?(File.expand_path(input_file))
-  puts "Query input file: #{input_file}"
+  
+  $LOG.info "Query input file: #{input_file}"
 else
-  puts "No input file specified in blast command (-query parameter)"
+  $LOG.error "No input file specified in blast command (-query parameter)"
   exit -1
 end
 
@@ -116,7 +136,7 @@ custom_worker_file=File.join(File.dirname(File.dirname(__FILE__)),'lib','scbi_di
 ScbiDblastManager.init_work_manager(input_file, blast_cmd, output_file)
 
 # launch processor server
-mgr = ScbiMapreduce::Manager.new(options[:server_ip], options[:port], options[:workers], ScbiDblastManager, custom_worker_file, STDOUT)
+mgr = ScbiMapreduce::Manager.new(options[:server_ip], options[:port], options[:workers], ScbiDblastManager, custom_worker_file, options[:log_file],$INIT_FILE)
 
 # you can set additional properties
 # =================================
@@ -134,4 +154,4 @@ mgr.chunk_size=options[:chunk_size]
 mgr.start_server
 
 # this line is reached when all data has been processed
-puts "Program finished"
+$LOG.info "Program finished"

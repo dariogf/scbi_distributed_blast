@@ -27,7 +27,7 @@ class ScbiDblastManager < ScbiMapreduce::WorkManager
   # You can use it to close files opened in init_work_manager
   def self.end_work_manager
     @@fqr.close
-    @@output_file.close
+    @@output_file.close if @@output_file!=STDOUT
   end
 
   # worker_initial_config is used to send initial parameters to workers.

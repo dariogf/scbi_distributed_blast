@@ -1,32 +1,193 @@
 = scbi_distributed_blast
 
-* http://github.com/#{github_username}/#{project_name}
+* http://www.scbi.uma.es/downloads
 
 == DESCRIPTION:
 
-FIX (describe your package)
+scbi_distributed_blast is a simple distribution mechanism for blast+ made on top of scbi_mapreduce. With scbi_distributed_blast you can perform distributed blasts using a cluster or a set of machines of your network. It uses the version of blast+ that you have installed.
+ 
+== FEATURES:
 
-== FEATURES/PROBLEMS:
-
-* FIX (list of features or problems)
+* Automatically distribute blast+ jobs against multiple computers.
+* Sequences are sent in chunks.
+* scbi_distributed_blast uses scbi_mapreduce and thus is able to exploit all the benefits of a cluster environment. It also works in multi-core machines and big shared-memory servers.
 
 == SYNOPSIS:
 
-  FIX (code sample of usage)
+Once installed, scbi_distributed_blast is very easy to use. To launch it locally in your own personal computer using 8 cores, you can do:
+  
+  $> scbi_distributed_blast -s 10.0.0 -w 8 'full_blast_cmd'
+  
+Where full_blast_cmd is the blast+ cmd that you would write to execute your desired blast search. Eg.:
+
+  $> scbi_distributed_blast -s 10.0.0 -w 8  'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
+
+Sequences are sent in chunks of 100, but you can change this value by using the -g parameter:
+
+  $> scbi_distributed_blast -s 10.0.0 -w 8 -g 200 'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
+
+To get additional help:
+
+  $> scbi_distributed_blast -h
+
+=== CLUSTERED EXECUTION:
+
+To take full advantage of a clustered installation, you can launch scbi_distributed_blast in distributed mode. You only need to provide it a list of machine names (or IPs) where workers will be launched (be sure you followed the clustered installation instructions). 
+
+Setup a workers file like this:
+    
+    machine1
+    machine1
+    machine2
+    machine2
+    machine2
+
+And launch scbi_distributed_blast this way:
+
+    $> scbi_distributed_blast -w workers_file -s 10.0.0 'blastn -task blast-short'
+    
+This will launch 2 workers on machine1 and 3 workers on machine2 using the network whose ip starts with 10.0.0 to communicate.
+
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+* Ruby: 1.9.2 recommended.
+* Blast plus 2.24 or greater (prior versions have bugs that produces bad results)
+
+== REQUIREMENTS INSTALL:
+
+You can skip this section if you have ruby and blast+ already installed.
+
+=== Installing Blast
+
+*Download the latest version of Blast+ from ftp://ftp.ncbi.nlm.nih.gov/blast/executables/release/LATEST/
+*You can also use a precompiled version if you like
+*To install from source, decompress the downloaded file, cd to the decompressed folder, and issue the following commands:
+
+  ./configure
+  make
+  sudo make install
+
+
+=== Installing Ruby 1.9
+
+*You can use RVM to install ruby:
+
+Download latest certificates (maybe you don't need them):
+
+  $ curl -O http://curl.haxx.se/ca/cacert.pem 
+  $ export CURL_CA_BUNDLE=`pwd`/cacert.pem # add this to your .bashrc or 
+equivalent
+
+Install RVM:
+
+  $ bash < <(curl -k https://rvm.beginrescueend.com/install/rvm)
+
+Setup environment:  
+  
+  $ echo '[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm" # Load RVM function' >> ~/.bash_profile
+  
+Install ruby 1.9.2 (this can take a while):
+  
+  $ rvm install 1.9.2
+  
+Set it as the default:
+
+  $ rvm use 1.9.2 --default
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
+=== Install scbi_distributed_blast
+
+scbi_distributed_blast is very easy to install. It is distributed as a ruby gem:
+
+  gem install scbi_distributed_blast
+  
+This will install scbi_distributed_blast and all the required gems.
+
+
+== CLUSTERED INSTALLATION
+
+To install scbi_distributed_blast into a cluster, you need to have the software available on all machines. By installing it on a shared location, or installing it on each cluster node. Once installed, you need to create a init_file where your environment is correctly setup (paths, BLASTDB, etc). E.g.:
+
+  export PATH=/apps/blast+/bin
+  export BLASTDB=/var/DB/formatted
+  export SCBI_DISTRIBUTED_BLAST_INIT=path_to_init_file
+  
+
+And initialize the SCBI_DISTRIBUTED_BLAST_INIT environment variable on your main node (from where SCBI_DISTRIBUTED_BLAST_INIT will be initially launched):
+
+  source path_to_init_file
+
+If you use any queue system like PBS Pro or Moab/Slurm, be sure to initialize the variables inside each submission script. 
+
+<b>NOTE</b>: all nodes on the cluster should use ssh keys to allow scbi_mapreduce to launch workers without asking for a password.
+
+== SAMPLE INIT FILES FOR CLUSTERED INSTALLATION:
+
+=== Init file
+
+  $> cat ~/scbi_distributed_blast_init_env 
+
+  export BLASTDB=/BLAST_DATABASES/
+  export SCBI_DISTRIBUTED_BLAST_INIT=~/scbi_distributed_blast_init_env
+
+
+=== PBS Submission script
+
+  $> cat sample_work.sh 
+  
+  # 40 distributed workers and 1 GB memory per worker:
+  #PBS -l select=40:ncpus=1:mpiprocs=1:mem=1gb
+  # request 10 hours of walltime:
+  #PBS -l walltime=10:00:00
+  # cd to working directory (from where job was submitted)
+  cd $PBS_O_WORKDIR
+
+  # create workers file with assigned node names
+
+  cat ${PBS_NODEFILE} > workers
+
+  # init scbi_distributed_blast
+  source path_to_init_file
+
+  time scbi_distributed_blast -s 10.0.0 -w workers  'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
+
+
+Once this submission script is created, you only need to launch it with:
+
+  qsub sample_work.sh
+
+=== MOAB/SLURM submission script
+
+  $> cat sample_work_moab.sh
+
+  #!/bin/bash 
+  # @ job_name = STN
+  # @ initialdir = .
+  # @ output = STN_%j.out
+  # @ error = STN_%j.err
+  # @ total_tasks = 40
+  # @ wall_clock_limit = 10:00:00
+
+  # guardar lista de workers
+  sl_get_machine_list > workers
+
+  # init scbi_distributed_blast
+  source path_to_init_file
+
+  time scbi_distributed_blast -s 10.0.0 -w workers  'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
+
+Then you only need to submit your job with mnsubmit
+
+  mnsubmit sample_work_moab.sh
+
 
 == LICENSE:
 
 (The MIT License)
 
-Copyright (c) 2011 FIXME full name
+Copyright (c) 2011 Dario Guerrero
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
