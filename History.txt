@@ -1,3 +1,7 @@
+=== 0.0.4 2011-07-12
+
+updated documentation
+
 === 0.0.3 2011-07-07
 
 prerelease

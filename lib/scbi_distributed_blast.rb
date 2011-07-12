@@ -7,5 +7,5 @@ require 'scbi_distributed_blast/scbi_dblast_manager.rb'
 ROOT_PATH=File.join(File.dirname(__FILE__),'scbi_distributed_blast')
 
 module ScbiDistributedBlast
-   VERSION = '0.0.3'
+   VERSION = '0.0.4'
 end

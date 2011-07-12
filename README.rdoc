@@ -4,7 +4,7 @@
 
 == DESCRIPTION:
 
-scbi_distributed_blast is a simple distribution mechanism for blast+ made on top of scbi_mapreduce. With scbi_distributed_blast you can perform distributed blasts using a cluster or a set of machines of your network. It uses the version of blast+ that you have installed.
+scbi_distributed_blast is a simple distribution mechanism for blast+ made on top of scbi_mapreduce. With scbi_distributed_blast you can perform distributed blasts using a cluster, a set of machines of your network or your own multi-core personal computer. It uses the same blast+ that you have already installed.
  
 == FEATURES:
 
@@ -16,15 +16,15 @@ scbi_distributed_blast is a simple distribution mechanism for blast+ made on top
 
 Once installed, scbi_distributed_blast is very easy to use. To launch it locally in your own personal computer using 8 cores, you can do:
   
-  $> scbi_distributed_blast -s 10.0.0 -w 8 'full_blast_cmd'
+  $> scbi_distributed_blast -w 8 'full_blast_cmd'
   
 Where full_blast_cmd is the blast+ cmd that you would write to execute your desired blast search. Eg.:
 
-  $> scbi_distributed_blast -s 10.0.0 -w 8  'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
+  $> scbi_distributed_blast -w 8  'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
 
 Sequences are sent in chunks of 100, but you can change this value by using the -g parameter:
 
-  $> scbi_distributed_blast -s 10.0.0 -w 8 -g 200 'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
+  $> scbi_distributed_blast -w 8 -g 200 'blastn -task blastn-short -db my_db.fasta -query ~/seqs/sample.fasta -outfmt 6 -out output_file'
 
 To get additional help:
 
