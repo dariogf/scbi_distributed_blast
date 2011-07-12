@@ -12,13 +12,17 @@ class ScbiDblastManager < ScbiMapreduce::WorkManager
   # worker connection, and thus, all global variables here should be
   # class variables (starting with @@)
   def self.init_work_manager(input_file, blast_cmd, output_file)
+    # save blast_cmd
     @@blast_cmd=blast_cmd
+    
+    # define output file
     if output_file.nil?
       @@output_file=STDOUT
     else
       @@output_file=File.open(output_file,'w')
     end
 
+    # open input file in fasta
     @@fqr = FastaQualFile.new(input_file)
     
   end
@@ -26,6 +30,7 @@ class ScbiDblastManager < ScbiMapreduce::WorkManager
   # end_work_manager is executed at the end, when all the process is done.
   # You can use it to close files opened in init_work_manager
   def self.end_work_manager
+    # close opened files
     @@fqr.close
     @@output_file.close if @@output_file!=STDOUT
   end
@@ -33,6 +38,7 @@ class ScbiDblastManager < ScbiMapreduce::WorkManager
   # worker_initial_config is used to send initial parameters to workers.
   # The method is executed once per each worker
   def worker_initial_config
+    # send blast_cmd to workers
     {:blast_cmd=>@@blast_cmd}
   end
 
@@ -41,6 +47,7 @@ class ScbiDblastManager < ScbiMapreduce::WorkManager
   # This method must return the work data or nil if no more data is available
   def next_work
     
+    # read next sequence from inputfile
     n,f = @@fqr.next_seq
 
     if n.nil?
@@ -55,8 +62,8 @@ class ScbiDblastManager < ScbiMapreduce::WorkManager
   # work_received is executed each time a worker has finished a job.
   # Here you can write results down to disk, perform some aggregated statistics, etc...
   def work_received(results)
+    # write results to disk
     @@output_file.puts results
-    # write_data_to_disk(results)
   end
 
 end
